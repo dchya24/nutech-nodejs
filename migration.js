@@ -1,4 +1,4 @@
-import pool from './connect.js';
+import pool from './src/database/connect.js';
 
 const migrate = async () => {
     const trx = await pool.connect();
