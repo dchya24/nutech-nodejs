@@ -1,26 +1,21 @@
 import { verifyToken } from '../helpers/jwt.js';
 
 const validateToken = (req, res, next) => {
-    const bearerToken = req.headers['authorization'];
-    if (!bearerToken) {
-        res.status(401).json({
-            status: 102,
-            message: "Token tidak ditemukan",
-            data: null
-        });
-    }
-
-    const token = bearerToken.split(' ')[1];
-
     try {
+        const bearerToken = req.headers['authorization'];
+        if (!bearerToken) {
+            throw new Error("Token tidak ditemukan");
+        }
+    
+        const token = bearerToken.split(' ')[1];
         const user = verifyToken(token);
         req.email = user.email;
         next();
     }
     catch (err) {
         res.status(401).json({
-            status: 102,
-            message: "Token tidak valid",
+            status: 108,
+            message: "Token tidak tidak valid atau kadaluwarsa",
             data: null
         });
     }
