@@ -20,4 +20,15 @@ const registerRequestSchema = joi.object({
     'any.required': 'Email, First Name, Last Name dan Password tidak boleh kosong!'
 })
 
-export default { loginRequestSchema, registerRequestSchema };
+const updateProfileRequestSchema = joi.object({
+    first_name: joi.string().required(),
+    last_name: joi.string().required()
+}).messages({
+    'any.required': 'First Name dan Last Name tidak boleh kosong!'
+})
+
+export default { 
+    loginRequestSchema, 
+    registerRequestSchema,
+    updateProfileRequestSchema,
+};
