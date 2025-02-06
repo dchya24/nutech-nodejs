@@ -1,23 +1,32 @@
 import bcrypt from "bcrypt";
-import error from "../../helpers/error.js";
+import error from "../../type/error.js";
 import repo from "./repository.js";
 import fs from "fs";
 import { generateToken } from "../../helpers/jwt.js";
+import pool from "../../database/connect.js";
 
 const register = async (req, res) => {
+    const trx = await pool.connect();
     try {
+        trx.query("BEGIN");
         const { email, first_name, last_name, password } = req.body;
 
-        const newUser = new repo.User(email, first_name, last_name, password);
+        const newUser = new repo.User(null,email, first_name, last_name, password);
 
         // Check if user already exist
-        const user = await repo.findByEmail(email);
+        const user = await repo.findByEmail(trx, email);
         if (user) {
             throw new Error(error.USER_EXIST);
         }
 
         // Save user to database
-        await repo.save(newUser);
+        const result = await repo.save(trx, newUser);
+
+        if (!result) {
+            throw new Error("Gagal menyimpan data user");
+        }
+
+        await trx.query("COMMIT");
 
         res.status(200).json({
             status: 0,
@@ -27,6 +36,7 @@ const register = async (req, res) => {
     }
     catch (err) {
         console.log("Error: ", err);
+        await trx.query("ROLLBACK");
 
         if (err.message === error.USER_EXIST) {
             res.status(409).json({
@@ -46,11 +56,12 @@ const register = async (req, res) => {
 }
 
 const login = async (req, res) => {
+    const trx = await pool.connect();
     try {
         const { email, password } = req.body;
 
         // Check if user exist
-        const user = await repo.findByEmail(email);
+        const user = await repo.findByEmail(trx, email);
         if (!user) {
             throw new Error(error.USER_NOT_FOUND);
         }
@@ -93,9 +104,10 @@ const login = async (req, res) => {
 }
 
 const getProfile = async (req, res) => {
+    const trx = await pool.connect();
     const email = req.email;
 
-    const user = await repo.findByEmail(email);
+    const user = await repo.findByEmail(trx, email);
 
     if (!user) {
         res.status(404).json({
@@ -115,11 +127,14 @@ const getProfile = async (req, res) => {
 }
 
 const updateProfile = async (req, res) => {
+    const trx = await pool.connect();
     try{
+        await trx.query("BEGIN");
+
         const { first_name, last_name } = req.body;
         const email = req.email;
 
-        const user = await repo.findByEmail(email);
+        const user = await repo.findByEmail(trx, email);
 
         if (!user) {
             res.status(404).json({
@@ -133,7 +148,13 @@ const updateProfile = async (req, res) => {
         user.first_name = first_name;
         user.last_name = last_name;
 
-        await repo.update(user);
+        const result = await repo.update(trx, user);
+
+        if (!result) {
+            throw new Error("Gagal mengupdate data user");
+        }
+
+        await trx.query("COMMIT");
 
         res.status(200).json({
             status: 0,
@@ -143,6 +164,8 @@ const updateProfile = async (req, res) => {
     }
     catch (err) {
         console.log("Error: ", err);
+        await trx.query("ROLLBACK");
+
         res.status(500).json({
             status: 999,
             message: "Internal Server Error"
@@ -151,13 +174,16 @@ const updateProfile = async (req, res) => {
 }
 
 const updateProfileImage = async (req, res) => {
+    const trx = await pool.connect();
     try{
+        await trx.query("BEGIN");
+
         if(!req.file) {
             throw new Error(error.EMPTY_IMAGE);
         }
 
         const email = req.email;
-        const user = await repo.findByEmail(email);
+        const user = await repo.findByEmail(trx, email);
 
         if (!user) {
             res.status(404).json({
@@ -171,7 +197,7 @@ const updateProfileImage = async (req, res) => {
         const oldImage = user.profile_image;
         user.profile_image = req.file.path;
 
-        await repo.update(user);
+        await repo.update(trx, user);
 
         // delete old image
         if(oldImage) {
@@ -190,6 +216,8 @@ const updateProfileImage = async (req, res) => {
             }
         }
 
+        await trx.query("COMMIT");
+
         res.status(200).json({
             status: 0,
             message: "Update profile image success",
@@ -198,6 +226,7 @@ const updateProfileImage = async (req, res) => {
     }
     catch (err) {
         console.error("Error:", err);
+        await trx.query("ROLLBACK");
 
         if(err.message === error.EMPTY_IMAGE) {
             res.status(400).json({

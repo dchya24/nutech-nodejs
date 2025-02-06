@@ -1,8 +1,10 @@
 import { Router } from "express";
 import informationHandler from "./modules/information/handler.js";
 import membershipHandler from "./modules/membership/handler.js";
+import transactionHandler from "./modules/transaction/handler.js";
 import validator from "./middleware/schemaValidator.js";
 import memberShipScema from "./modules/membership/schema.js";
+import transactionSchema from "./modules/transaction/schema.js";
 import validateToken from "./middleware/validateToken.js";
 import uploadImage from "./middleware/upload.js";
 
@@ -24,5 +26,11 @@ router.put(
     uploadImage.single('image'),
     membershipHandler.updateProfileImage
 )
+
+// transaction
+router.get('/balance', validateToken, transactionHandler.getBalance);
+router.post('/topup', validateToken, validator(transactionSchema.topupSchema), transactionHandler.topup);
+router.post('/transaction', validateToken, validator(transactionSchema.createTransactionSchema), transactionHandler.createTransaction);
+router.get('/transaction/history', validateToken, transactionHandler.getTransactionHistory);
 
 export default router;

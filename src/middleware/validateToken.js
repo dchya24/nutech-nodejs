@@ -1,6 +1,8 @@
 import { verifyToken } from '../helpers/jwt.js';
+import memberRepository from '../modules/membership/repository.js';
+import pool from '../database/connect.js';
 
-const validateToken = (req, res, next) => {
+const validateToken = async (req, res, next) => {
     try {
         const bearerToken = req.headers['authorization'];
         if (!bearerToken) {
@@ -9,6 +11,15 @@ const validateToken = (req, res, next) => {
     
         const token = bearerToken.split(' ')[1];
         const user = verifyToken(token);
+
+        // check if user is not null
+        const trx = await pool.connect();
+        const checkUser = await memberRepository.findByEmail(trx, user.email);
+        
+        if (!checkUser) {
+            throw new Error("User tidak ditemukan");
+        }
+
         req.email = user.email;
         next();
     }
