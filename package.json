@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "migrate": "node migration.js"
+    "migrate": "node ./src/database/migrate.js",
+    "seed": "node ./src/database/seed.js"
   },
   "author": "",
   "license": "ISC",
