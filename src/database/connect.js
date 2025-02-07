@@ -19,7 +19,7 @@ if(process.env.NODE_ENV === 'production') {
 }
 console.log(config, process.env.NODE_ENV);
 
-const pool = new pg.Pool();
+const pool = new pg.Pool(config);
 
 pool.on('error', (err) => {
     console.log("Error: ", err);
