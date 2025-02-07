@@ -11,12 +11,13 @@ const config = {
     database: process.env.PGDATABASE || 'postgres',
     password: process.env.PGPASSWORD || null,
     port:process.env.PGPORT || 5432,
-    max: 50,
+    max: 50
 }
 
 if(process.env.NODE_ENV === 'production') {
     config.ssl = { rejectUnauthorized: false }
 }
+console.log(config, process.env.NODE_ENV);
 
 const pool = new pg.Pool();
 
