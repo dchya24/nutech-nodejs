@@ -11,6 +11,9 @@ const pool = new pg.Pool({
     password: process.env.PGPASSWORD || null,
     port:process.env.PGPORT || 5432,
     max: 50,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 pool.on('error', (err) => {

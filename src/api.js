@@ -20,7 +20,7 @@ router.get('/migrate', (req, res) => {
         message: "Migration success"
     });
 });
-router.get('seed', (req, res) => {
+router.get('/seed', (req, res) => {
     seed();
     res.json({
         status: 0,
