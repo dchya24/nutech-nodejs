@@ -5,7 +5,7 @@ import fs from "fs";
 import { generateToken } from "../../helpers/jwt.js";
 import pool from "../../database/connect.js";
 
-const register = async (req, res) => {
+const register = async (req, res, next) => {
     const trx = await pool.connect();
     try {
         trx.query("BEGIN");
@@ -35,9 +35,10 @@ const register = async (req, res) => {
         })
     }
     catch (err) {
-        console.log("Error: ", err);
+        console.log("[membership/handler.register] Error: ", err);
         await trx.query("ROLLBACK");
 
+        // Handle error if user already exist
         if (err.message === error.USER_EXIST) {
             res.status(409).json({
                 status: 101,
@@ -47,15 +48,12 @@ const register = async (req, res) => {
             return;
         }
 
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        next(err);
     }
 
 }
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
     const trx = await pool.connect();
     try {
         const { email, password } = req.body;
@@ -84,7 +82,7 @@ const login = async (req, res) => {
         });
     }
     catch (err) {
-        console.log("Error: ", err);
+        console.log("[membership/handler.login] Error: ", err);
 
         // Handle error if user not found or invalid credensial
         if (err.message === error.USER_NOT_FOUND || err.message === error.INVALID_CREDENSIAL) {
@@ -96,34 +94,28 @@ const login = async (req, res) => {
             return;
         }
 
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        next(err);
     }
 }
 
-const getProfile = async (req, res) => {
+const getProfile = async (req, res, next) => {
     const trx = await pool.connect();
-    const email = req.email;
-
-    const user = await repo.findByEmail(trx, email);
-
-    if (!user) {
-        res.status(404).json({
-            status: 102,
-            message: "User not found",
-            data: null
+    try {
+        const email = req.email;
+    
+        const user = await repo.findByEmail(trx, email);
+    
+        res.status(200).json({
+            status: 0,
+            message: "Success",
+            data: user.toResponse()
         });
-        return;
     }
+    catch(err) {
+        console.log("Error: ", err);
 
-    res.status(200).json({
-        status: 0,
-        message: "Success",
-        data: user.toResponse()
-    });
-
+        next(err);
+    }
 }
 
 const updateProfile = async (req, res) => {
@@ -136,22 +128,13 @@ const updateProfile = async (req, res) => {
 
         const user = await repo.findByEmail(trx, email);
 
-        if (!user) {
-            res.status(404).json({
-                status: 102,
-                message: "User not found",
-                data: null
-            });
-            return;
-        }
-
         user.first_name = first_name;
         user.last_name = last_name;
 
         const result = await repo.update(trx, user);
 
         if (!result) {
-            throw new Error("Gagal mengupdate data user");
+            throw new Error(error.FAILED_UPDATE);
         }
 
         await trx.query("COMMIT");
@@ -163,13 +146,19 @@ const updateProfile = async (req, res) => {
         });
     }
     catch (err) {
-        console.log("Error: ", err);
+        console.log("[membership/handler.updateProfile] Error: ", err);
         await trx.query("ROLLBACK");
 
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        if(err.message === error.FAILED_UPDATE) {
+            res.status(500).json({
+                status: 999,
+                message: "Gagal mengupdate profile",
+                data: null
+            });
+            return;
+        }
+
+        next(err);
     }
 }
 
@@ -182,35 +171,27 @@ const updateProfileImage = async (req, res) => {
             throw new Error(error.EMPTY_IMAGE);
         }
 
-        const email = req.email;
-        const user = await repo.findByEmail(trx, email);
-
-        if (!user) {
-            res.status(404).json({
-                status: 102,
-                message: "User not found",
-                data: null
-            });
-            return;
-        }
-
+        // update profile image
         const oldImage = user.profile_image;
         user.profile_image = req.file.path;
 
-        await repo.update(trx, user);
+        const updated = await repo.update(trx, user);
 
-        // delete old image
+        if (!updated) {
+            throw new Error();
+        }
+
         if(oldImage) {
             // get project path
             const projectPath = process.cwd();
             const oldImagePath = projectPath + "/" + oldImage;
 
-            // check if file exist
+            // delete old image if exist
             if(fs.existsSync(oldImagePath)) {
                 fs.unlink(oldImagePath, (err) => {
                     if(err) {
                         console.error("Error delete file: ", err);
-                        throw new Error("Error delete file");
+                        throw new Error(error.FAILED_DELETE_FILE);
                     }
                 });
             }
@@ -225,22 +206,27 @@ const updateProfileImage = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("Error:", err);
+        console.error("[membership/handler.updateProfileImage] Error:", err);
         await trx.query("ROLLBACK");
 
         if(err.message === error.EMPTY_IMAGE) {
             res.status(400).json({
-                status: 104,
-                message: error.EMPTY_IMAGE,
+                status: 102,
+                message: err.message,
+                data: null
+            });
+            return;
+        }
+        else if(err.message === error.FAILED_DELETE_FILE || err.message === error.FAILED_UPDATE) {
+            res.status(500).json({
+                status: 999,
+                message: "Gagal mengupdate profile image",
                 data: null
             });
             return;
         }
 
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        next(err);
     }
 }
 

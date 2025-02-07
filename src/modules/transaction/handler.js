@@ -1,9 +1,10 @@
 import pool from "../../database/connect.js";
+import error from "../../type/error.js";
 import TransactionType from "../../type/transactionType.js";
 import userRepo from "../membership/repository.js";
 import repo from "./repository.js";
 
-const topup = async (req, res) => {
+const topup = async (req, res, next) => {
     const trx = await pool.connect();
     try {
         await trx.query("BEGIN");
@@ -12,8 +13,14 @@ const topup = async (req, res) => {
 
         const user = await userRepo.findByEmail(trx, userEmail);
 
+        // generate invoice number
         const invoiceNumber = await repo.generateInvoiceNumber(trx);
 
+        if(invoiceNumber === null) {
+            throw new Error(error.FAILED_TO_CREATE_INV_CODE);
+        }
+
+        // create transaction
         const transaction = new repo.Transaction(
             null,
             invoiceNumber,
@@ -23,13 +30,10 @@ const topup = async (req, res) => {
             top_up_amount,
             "Top Up balance"
         );
-
-        console.log("Transaction: ", transaction);
-
         const result = await repo.save(trx, transaction);
 
         if (!result) {
-            throw new Error("Gagal melakukan transaksi");
+            throw new Error(error.TRANSACTION_FAILED);
         }
 
         const currentBalance = await repo.getUserBalanceByEmail(trx, user.email);
@@ -48,16 +52,22 @@ const topup = async (req, res) => {
         await trx.query("ROLLBACK");
 
         console.log("Error: ", err);
+
+        if(err.message === error.FAILED_TO_CREATE_INV_CODE || err.message === error.TRANSACTION_FAILED) {
+            res.status(500).json({
+                status: 999,
+                message: err.message,
+                data: null
+            });
+            return;
+        }
         
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error",
-            data: null
-        });
+        
+        next(err)
     }
 }
 
-const getBalance = async (req, res) => {
+const getBalance = async (req, res, next) => {
     try {
         const trx = await pool.connect();
         const userEmail = req.email;
@@ -74,40 +84,40 @@ const getBalance = async (req, res) => {
     }
     catch (err) {
         console.log("Error: ", err);
-        res.status(400).json({
-            status: 400,
-            message: err.message,
-            data: null
-        });
+
+        next(err)
     }
 }
 
-const getTransactionHistory = async (req, res) => {
+const getTransactionHistory = async (req, res, next) => {
     try {
         const trx = await pool.connect();
         const userEmail = req.email;
 
+        // get limit and offset from query
         const limit = req.query.limit || null;
+        const offset = req.query.offset || null;
 
-        const transactions = await repo.getTransactionHistory(trx, userEmail, limit);
+        const transactions = await repo.getTransactionHistory(trx, userEmail, limit, offset);
 
         res.status(200).json({
             status: 0,
             message: "Success",
-            data: transactions
+            data: {
+                offset: offset || 0,
+                limit: limit || 0,
+                records: transactions
+            }
         });
     }
     catch (err) {
         console.log("Error: ", err);
-        res.status(400).json({
-            status: 400,
-            message: err.message,
-            data: null
-        });
+
+        next(err)
     }
 }
 
-const createTransaction = async(req, res) => {
+const createTransaction = async(req, res, next) => {
     const trx = await pool.connect()
     
     try{
@@ -118,30 +128,22 @@ const createTransaction = async(req, res) => {
 
         const user = await userRepo.findByEmail(trx, userEmail)
 
+        // check service code
         const checkService = await repo.getServiceByCode(trx, service_code)
-
         if(!checkService) {
-            res.status(400).json({
-                status: 102,
-                message: "Service ataus Layanan tidak ditemukan",
-                data: null
-            })
-            return
+            throw new Error(error.SERVICE_NOT_FOUND)
         }
 
+        // check user balance enough or not
         const userBalance = await repo.getUserBalanceByEmail(trx, userEmail)
-
         if(checkService.service_tariff > userBalance){
-            res.status(400).json({
-                status: 105,
-                message: "Balance tidak mencukupi",
-                data: null
-            })
-            return
+            throw new Error(error.NOT_ENOUGH_BALANCE)
         }
 
+        // generate invoice number
         const invoiceNumber = await repo.generateInvoiceNumber(trx)
 
+        // create transaction
         const transaction = new repo.Transaction(
             null,
             invoiceNumber,
@@ -155,7 +157,7 @@ const createTransaction = async(req, res) => {
         const newTransaction = repo.save(trx, transaction)
 
         if(!newTransaction){
-            throw new Error()
+            throw new Error(error.FAILED_TO_INSERT)
         }
 
         await trx.query('COMMIT')
@@ -178,11 +180,24 @@ const createTransaction = async(req, res) => {
         await trx.query('ROLLBACK')
         console.log(err)
 
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error",
-            data: null
-        });
+        if(err.message === error.NOT_ENOUGH_BALANCE || err.message === error.SERVICE_NOT_FOUND){
+            res.status(400).json({
+                status: 102,
+                message: err.message,
+                data: null
+            })
+            return
+        }
+        else if (err.message == error.FAILED_TO_INSERT){
+            res.status(500).json({
+                status: 999,
+                message: err.message,
+                data: null
+            })
+            return
+        }
+
+        next(err)
     }
 }
 

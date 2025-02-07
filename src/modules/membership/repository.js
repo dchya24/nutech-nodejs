@@ -21,7 +21,13 @@ class User {
 
     getImageUrl() {
         const base_url = process.env.BASE_URL || 'http://localhost:3000';
-        return `${base_url}/${this.profile_image}`;
+
+        let imageUrl = this.profile_image;
+
+        if(!this.profile_image.startsWith('http')) {
+            imageUrl = `${base_url}/${this.profile_image}`;
+        }
+        return imageUrl;
     }
 
 }
@@ -38,40 +44,52 @@ const save = async (trx, user) => {
 
         const result = await trx.query(query, [user.email, user.first_name, user.last_name, hashPassword, user.profile_image]);
 
-        if(result) {
-            await trx.query("COMMIT");
-            return result;
+        if(result.rowCount === 0) {
+            return null;
         }
+        
+        return result.rowCount;
     }
     catch(err) {
-        await trx.query("ROLLBACK");
-        console.log("Error: ", err);
+        console.log("[membership/repository.save] Error: ", err);
         return null;
     }
 }
 
 const findByEmail = async (trx, email) => {
-    const query = `
-        select * from users where email = $1
-    `;
+    try{
+        const query = `
+            select * from users where email = $1
+        `;
 
-    const result = await trx.query(query, [email]);
+        const result = await trx.query(query, [email]);
 
-    if(result.rows.length === 0) { 
+        if(result.rows.length === 0) { 
+            throw new Error("User not found");
+        }
+
+        const row = result.rows[0];
+        return new User(row.id, row.email, row.first_name, row.last_name, row.password, row.profile_image);
+    }
+    catch(err) {
+        console.log("[membership/repository.findByEmail] Error: ", err);
         return null;
     }
-
-    const row = result.rows[0];
-    return new User(row.id, row.email, row.first_name, row.last_name, row.password, row.profile_image);
 }
 
 const update = async (trx, user) => {
-    const query = `
-        update users set first_name = $1, last_name = $2, profile_image = $3 where email = $4
-    `;
+    try{
+        const query = `
+            update users set first_name = $1, last_name = $2, profile_image = $3 where email = $4
+        `;
 
-    const result = await trx.query(query, [user.first_name, user.last_name, user.profile_image, user.email]);
-    return result;
+        const result = await trx.query(query, [user.first_name, user.last_name, user.profile_image, user.email]);
+        return result;
+    }
+    catch(err) {
+        console.log("[membership/repository.update] Error: ", err);
+        return null;
+    }
 }
 
 export default { User, save, findByEmail, update };

@@ -24,6 +24,7 @@ const validateToken = async (req, res, next) => {
         next();
     }
     catch (err) {
+        console.log("[validateToken] Error: ", err);
         res.status(401).json({
             status: 108,
             message: "Token tidak tidak valid atau kadaluwarsa",

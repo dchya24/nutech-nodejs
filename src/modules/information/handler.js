@@ -1,6 +1,6 @@
 import pool from '../../database/connect.js';
 
-const getServices = async (req, res) => {
+const getServices = async (req, res, next) => {
     try {
         const services = await pool.query(`
             select 
@@ -19,14 +19,11 @@ const getServices = async (req, res) => {
     }
     catch (err) {
         console.log("Error: ", err);
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        next(err);
     }
 }
 
-const getBanners = async (req, res) => {
+const getBanners = async (req, res, next) => {
     try {
         const banners = await pool.query(`
             select
@@ -43,10 +40,7 @@ const getBanners = async (req, res) => {
     }
     catch (err) {
         console.log("Error: ", err);
-        res.status(500).json({
-            status: 999,
-            message: "Internal Server Error"
-        });
+        next(err);
     }
 }
 

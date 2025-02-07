@@ -16,26 +16,27 @@ app.use("/", router)
 
 app.use((err, req, res, next) => {
     console.log("Error: ", err);
+    
+    let message = err.message;
+    let headerStatusCode = 500;
+    let statusCode = 999;
 
     if(err instanceof multer.MulterError) {
-        let message = err.message;
-
+        statusCode = 999;
         if(err.code === "LIMIT_FILE_SIZE") {
+            statusCode = 104;
+            headerStatusCode = 400;
             message = "Ukuran file terlalu besar, maksimal 5MB";
         }
-
-        res.status(400).json({
-            status: 102,
-            message: message,
-            data: null
-        })
-        return
     }
-    res.status(500).json({
-        status: 999,
+
+    res.status(headerStatusCode).json({
+        status: statusCode,
         message: err.message,
         data: null
     })
+
+    return
 })
 
 app.listen(PORT, () => {
