@@ -127,7 +127,7 @@ const getProfile = async (req, res, next) => {
     }
 }
 
-const updateProfile = async (req, res) => {
+const updateProfile = async (req, res, next) => {
     const trx = await pool.connect();
     try{
         await trx.query("BEGIN");
@@ -174,7 +174,7 @@ const updateProfile = async (req, res) => {
     }
 }
 
-const updateProfileImage = async (req, res) => {
+const updateProfileImage = async (req, res, next) => {
     const trx = await pool.connect();
     try{
         await trx.query("BEGIN");
@@ -182,6 +182,10 @@ const updateProfileImage = async (req, res) => {
         if(!req.file) {
             throw new Error(error.EMPTY_IMAGE);
         }
+
+        
+        const email = req.email;
+        const user = await repo.findByEmail(trx, email);
 
         // update profile image
         const oldImage = user.profile_image;
