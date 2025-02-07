@@ -24,8 +24,14 @@ class User {
 
         let imageUrl = this.profile_image;
 
-        if(!this.profile_image.startsWith('http')) {
-            imageUrl = `${base_url}/${this.profile_image}`;
+        // remove public if starts with public
+        if(this.profile_image.startsWith('public')) {
+            console.log(this.profile_image);
+            imageUrl = this.profile_image.replace('public', '');
+        }
+
+        if(!this.profile_image.startsWith('http') || !this.profile_image.startsWith('https')) {
+            imageUrl = `${base_url}/${imageUrl}`;
         }
         return imageUrl;
     }
