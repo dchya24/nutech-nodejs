@@ -7,9 +7,26 @@ import memberShipScema from "./modules/membership/schema.js";
 import transactionSchema from "./modules/transaction/schema.js";
 import validateToken from "./middleware/validateToken.js";
 import uploadImage from "./middleware/upload.js";
-
+import migrate from "./database/migration.js";
+import seed from "./database/seeder.js";
 
 const router = Router();
+
+// migrate route
+router.get('/migrate', (req, res) => {
+    migrate();
+    res.json({
+        status: 0,
+        message: "Migration success"
+    });
+});
+router.get('seed', (req, res) => {
+    seed();
+    res.json({
+        status: 0,
+        message: "Seeder success"
+    });
+})
 
 // information routes
 router.get('/banner', informationHandler.getBanners);

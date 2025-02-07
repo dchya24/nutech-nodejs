@@ -28,7 +28,6 @@ const migrate = async () => {
                 password text not null,
                 profile_image text not null default 'https://fastly.picsum.photos/id/847/200/200.jpg?hmac=ET2eUKsG4SCaCnGMrTpgEBXpx7YG1j2X8DpBnHC25wA'
             );
-            CREATE TYPE TRANSACTION_TYPE AS ENUM ('TOPUP', 'PAYMENT');
             create table if not exists transactions (
                 id serial primary key,
                 user_id integer not null,
@@ -55,14 +54,4 @@ const migrate = async () => {
     }
 }
 
-migrate().then(() => {
-    console.log("Migration completed");
-}).catch(err => {
-    console.log("Error: ", err);
-}).finally(() => {
-    process.exit(1);
-})
-
-process.on('SIGTERM', () => {
-    console.log('Signal received.');
-});
+export default migrate;

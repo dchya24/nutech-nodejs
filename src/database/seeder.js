@@ -1,8 +1,8 @@
-import pool from "./connect";
+import pool from "./connect.js";
 
 
 const seed = async () => {
-    const trx = pool.connect();
+    const trx = await pool.connect();
     try{
         await trx.query("BEGIN");
 
@@ -41,8 +41,4 @@ const seed = async () => {
     }
 }
 
-seed().then(() => {
-    console.log("Seed completed");
-}).catch(err => {
-    console.log("Seed failed", err);
-});
+export default seed;
