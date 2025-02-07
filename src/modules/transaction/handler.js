@@ -51,7 +51,7 @@ const topup = async (req, res, next) => {
     catch (err) {
         await trx.query("ROLLBACK");
 
-        console.log("Error: ", err);
+        console.log("[transaction/handler.topup]", err);
 
         if(err.message === error.FAILED_TO_CREATE_INV_CODE || err.message === error.TRANSACTION_FAILED) {
             res.status(500).json({
@@ -65,11 +65,14 @@ const topup = async (req, res, next) => {
         
         next(err)
     }
+    finally {
+        trx.release();
+    }
 }
 
 const getBalance = async (req, res, next) => {
+    const trx = await pool.connect();
     try {
-        const trx = await pool.connect();
         const userEmail = req.email;
 
         const balance = await repo.getUserBalanceByEmail(trx, userEmail);
@@ -83,15 +86,18 @@ const getBalance = async (req, res, next) => {
         });
     }
     catch (err) {
-        console.log("Error: ", err);
+        console.log("[transaction/handler.getBalance]", err);
 
         next(err)
+    }
+    finally {
+        trx.release();
     }
 }
 
 const getTransactionHistory = async (req, res, next) => {
+    const trx = await pool.connect();
     try {
-        const trx = await pool.connect();
         const userEmail = req.email;
 
         // get limit and offset from query
@@ -111,9 +117,12 @@ const getTransactionHistory = async (req, res, next) => {
         });
     }
     catch (err) {
-        console.log("Error: ", err);
+        console.log("[transaction/handler.geteTransactionHistory]", err);
 
         next(err)
+    }
+    finally {
+        trx.release();
     }
 }
 
@@ -154,7 +163,7 @@ const createTransaction = async(req, res, next) => {
             checkService.service_name
         )
 
-        const newTransaction = repo.save(trx, transaction)
+        const newTransaction = await repo.save(trx, transaction)
 
         if(!newTransaction){
             throw new Error(error.FAILED_TO_INSERT)
@@ -170,7 +179,7 @@ const createTransaction = async(req, res, next) => {
                 service_Code: checkService.service_code,
                 service_name: checkService.service_name,
                 transaction_type: newTransaction.transaction_type,
-                total_amount: newTransaction.total_amount,
+                total_amount: parseInt(newTransaction.total_amount),
                 created_on: newTransaction.created_on
             }
         })
@@ -178,7 +187,7 @@ const createTransaction = async(req, res, next) => {
     }
     catch(err){
         await trx.query('ROLLBACK')
-        console.log(err)
+        console.log('[transaction/handler.createTransaction]', err)
 
         if(err.message === error.NOT_ENOUGH_BALANCE || err.message === error.SERVICE_NOT_FOUND){
             res.status(400).json({
@@ -198,6 +207,9 @@ const createTransaction = async(req, res, next) => {
         }
 
         next(err)
+    }
+    finally {
+        trx.release();
     }
 }
 

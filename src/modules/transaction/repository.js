@@ -18,14 +18,14 @@ class Transaction {
     }
 }
 
-const save = (trx, transaction) => {
+const save = async (trx, transaction) => {
     try{
         const query  = `
             insert into transactions (user_id, service_id, invoice_number, transaction_type, total_amount, description) values
             ($1, $2, $3, $4, $5, $6) returning *
         `
 
-        const result = trx.query(query, [
+        const result = await trx.query(query, [
             transaction.userId, 
             transaction.serviceId, 
             transaction.invoiceNumber,
@@ -41,7 +41,7 @@ const save = (trx, transaction) => {
         return result.rows[0];
     }
     catch(err) {
-        console.log("[TransactionRepository.save] Error: ", err);
+        console.log("[TransactionRepository.save]", err);
         return null;
     }
 }
@@ -64,7 +64,7 @@ const generateInvoiceNumber = async (trx) => {
         return `${invPrefix}-${currentSequence}`;
     }
     catch(err) {
-        console.log("[TransactionRepository.generateInvoiceNumber] Error: ", err);
+        console.log("[TransactionRepository.generateInvoiceNumber]", err);
         return null;
     }
 }
@@ -80,7 +80,7 @@ const getServiceByCode = async (trx, code) => {
         return result.rows[0];
     }
     catch(err) {
-        console.log("[TransactionRepository.getServiceByCode] Error: ", err);
+        console.log("[TransactionRepository.getServiceByCode]", err);
         return null;
     }
 }
@@ -108,14 +108,14 @@ const getUserBalanceByEmail = async (trx, email) => {
         return totalBalance;
     }
     catch(err) {
-        console.log("[TransactionRepository.getUserBalanceByEmail] Error: ", err);
+        console.log("[TransactionRepository.getUserBalanceByEmail]", err);
         throw new Error(err);
     }
 }
 
 const getTransactionHistory = async (trx, email, limit = null, offset = null) => {
     try{
-        const query = `
+        let query = `
             select 
                 t.invoice_number,
                 t.transaction_type,
@@ -145,7 +145,7 @@ const getTransactionHistory = async (trx, email, limit = null, offset = null) =>
         return result.rows;
     }
     catch(err) {
-        console.log("[TransactionRepository.getTransactionHistory] Error: ", err);
+        console.log("[TransactionRepository.getTransactionHistory]", err);
         throw new Error(err);
     }
 }

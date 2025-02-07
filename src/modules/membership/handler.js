@@ -35,7 +35,7 @@ const register = async (req, res, next) => {
         })
     }
     catch (err) {
-        console.log("[membership/handler.register] Error: ", err);
+        console.log("[membership/handler.register]", err);
         await trx.query("ROLLBACK");
 
         // Handle error if user already exist
@@ -49,6 +49,9 @@ const register = async (req, res, next) => {
         }
 
         next(err);
+    }
+    finally {
+        trx.release();
     }
 
 }
@@ -82,7 +85,7 @@ const login = async (req, res, next) => {
         });
     }
     catch (err) {
-        console.log("[membership/handler.login] Error: ", err);
+        console.log("[membership/handler.login]", err);
 
         // Handle error if user not found or invalid credensial
         if (err.message === error.USER_NOT_FOUND || err.message === error.INVALID_CREDENSIAL) {
@@ -95,6 +98,9 @@ const login = async (req, res, next) => {
         }
 
         next(err);
+    }
+    finally {
+        trx.release();
     }
 }
 
@@ -112,9 +118,12 @@ const getProfile = async (req, res, next) => {
         });
     }
     catch(err) {
-        console.log("Error: ", err);
+        console.log("", err);
 
         next(err);
+    }
+    finally {
+        trx.release();
     }
 }
 
@@ -146,7 +155,7 @@ const updateProfile = async (req, res) => {
         });
     }
     catch (err) {
-        console.log("[membership/handler.updateProfile] Error: ", err);
+        console.log("[membership/handler.updateProfile]", err);
         await trx.query("ROLLBACK");
 
         if(err.message === error.FAILED_UPDATE) {
@@ -159,6 +168,9 @@ const updateProfile = async (req, res) => {
         }
 
         next(err);
+    }
+    finally {
+        trx.release();
     }
 }
 
@@ -206,7 +218,7 @@ const updateProfileImage = async (req, res) => {
         });
     }
     catch (err) {
-        console.error("[membership/handler.updateProfileImage] Error:", err);
+        console.error("[membership/handler.updateProfileImage]", err);
         await trx.query("ROLLBACK");
 
         if(err.message === error.EMPTY_IMAGE) {
@@ -227,6 +239,9 @@ const updateProfileImage = async (req, res) => {
         }
 
         next(err);
+    }
+    finally {
+        trx.release();
     }
 }
 

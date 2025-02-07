@@ -13,8 +13,7 @@ const validateToken = async (req, res, next) => {
         const user = verifyToken(token);
 
         // check if user is not null
-        const trx = await pool.connect();
-        const checkUser = await memberRepository.findByEmail(trx, user.email);
+        const checkUser = await memberRepository.findByEmail(pool, user.email);
         
         if (!checkUser) {
             throw new Error("User tidak ditemukan");

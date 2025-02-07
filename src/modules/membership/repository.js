@@ -51,7 +51,7 @@ const save = async (trx, user) => {
         return result.rowCount;
     }
     catch(err) {
-        console.log("[membership/repository.save] Error: ", err);
+        console.log("[membership/repository.save]", err);
         return null;
     }
 }
@@ -72,7 +72,7 @@ const findByEmail = async (trx, email) => {
         return new User(row.id, row.email, row.first_name, row.last_name, row.password, row.profile_image);
     }
     catch(err) {
-        console.log("[membership/repository.findByEmail] Error: ", err);
+        console.log("[membership/repository.findByEmail]", err);
         return null;
     }
 }
@@ -87,7 +87,7 @@ const update = async (trx, user) => {
         return result;
     }
     catch(err) {
-        console.log("[membership/repository.update] Error: ", err);
+        console.log("[membership/repository.update]", err);
         return null;
     }
 }
